@@ -1,0 +1,168 @@
+// Prisma schema for Grocery Store 2026
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication and multi-tenancy
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // bcrypt hashed
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  stores     Store[]
+  products   Product[]
+  purchases  Purchase[]
+  categories Category[]
+
+  @@index([email])
+}
+
+// Store model
+model Store {
+  id        String    @id @default(cuid())
+  name      String
+  address   String?
+  city      String?
+  userId    String
+  deletedAt DateTime? // Soft delete timestamp
+  deletedBy String?   // User ID who deleted
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+
+  @@index([userId])
+  @@index([name])
+  @@index([deletedAt])
+}
+
+// Category model for user-customizable product categories
+model Category {
+  id          String    @id @default(cuid())
+  name        String    // e.g., "חלב ומוצריו", "ירקות ופירות", "Dairy", "Vegetables"
+  userId      String
+  isDefault   Boolean   @default(false) // System-provided default categories
+  deletedAt   DateTime? // Soft delete timestamp
+  deletedBy   String?   // User ID who deleted
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([userId, name, deletedAt]) // Allow reusing category names after deletion
+  @@index([userId])
+  @@index([name])
+  @@index([deletedAt])
+}
+
+// Product model with canonical names for normalization
+model Product {
+  id            String    @id @default(cuid())
+  canonicalName String    // Normalized product name
+  categoryId    String?   // Reference to Category model
+  barcode       String?   @unique
+  defaultUnit   UnitType  @default(PIECE)
+  userId        String
+  deletedAt     DateTime? // Soft delete timestamp
+  deletedBy     String?   // User ID who deleted
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  aliases       ProductAlias[]
+  purchaseItems PurchaseItem[]
+
+  @@index([userId])
+  @@index([canonicalName])
+  @@index([barcode])
+  @@index([categoryId])
+  @@index([deletedAt])
+}
+
+// ProductAlias for product normalization (fuzzy matching)
+// Maps variations like "Kinder Bueno", "kinder bueno", "קינדר בואנו" to canonical product
+model ProductAlias {
+  id        String   @id @default(cuid())
+  productId String
+  aliasName String   // The variation name
+  language  String?  // "he" or "en"
+  createdAt DateTime @default(now())
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, aliasName])
+  @@index([aliasName])
+  @@index([productId])
+}
+
+// Purchase (receipt/transaction)
+model Purchase {
+  id           String    @id @default(cuid())
+  purchaseDate DateTime  @default(now())
+  storeId      String
+  totalAmount  Float
+  notes        String?
+  userId       String
+  deletedAt    DateTime? // Soft delete timestamp
+  deletedBy    String?   // User ID who deleted
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  items PurchaseItem[]
+
+  @@index([userId])
+  @@index([storeId])
+  @@index([purchaseDate])
+  @@index([deletedAt])
+}
+
+// PurchaseItem (individual product in a purchase)
+model PurchaseItem {
+  id                 String   @id @default(cuid())
+  purchaseId         String
+  productId          String
+  quantity           Float
+  unitType           UnitType
+  totalPrice         Float
+  calculatedUnitPrice Float   // Normalized price for comparison (e.g., price per kg)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseId])
+  @@index([productId])
+  @@index([calculatedUnitPrice])
+}
+
+// Unit types for products
+enum UnitType {
+  PIECE      // Single item
+  KILOGRAM   // kg
+  GRAM       // g
+  LITER      // L
+  MILLILITER // ml
+  PACKAGE    // Pack/box
+}
