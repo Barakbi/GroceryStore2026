@@ -331,6 +331,20 @@ Default ports:
 - Frontend and backend ports must match CORS settings
 - If changing frontend port, update both `vite.config.ts` AND `.env` FRONTEND_URL
 
+## Production Deployment
+
+**Status**: Deployment configuration in progress (to be completed in future session)
+
+The project is prepared for deployment with:
+- Git repository: https://github.com/Barakbi/GroceryStore2026
+- Neon PostgreSQL database configured and migrated
+- Deployment guide available in `DEPLOYMENT.md`
+
+**Pending work**:
+- Complete Railway backend deployment configuration
+- Deploy frontend to Vercel
+- Connect production URLs
+
 ## Important Notes
 
 - **All database queries must filter by `userId`** to maintain multi-tenancy isolation
