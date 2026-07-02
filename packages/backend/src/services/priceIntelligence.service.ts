@@ -223,7 +223,7 @@ export async function getExclusiveProducts(storeId: string): Promise<Product[]> 
     const isExclusive = allPurchases.every(item => item.purchase.storeId === storeId);
 
     if (isExclusive && allPurchases.length > 0) {
-      const product = allPurchases[0].product || await prisma.product.findUnique({
+      const product = await prisma.product.findUnique({
         where: { id: productId }
       });
       if (product) {

@@ -201,7 +201,7 @@ export async function normalizeProduct(
   const newProduct = await prisma.product.create({
     data: {
       canonicalName: name,
-      category,
+      categoryId: category,
       barcode,
       defaultUnit: defaultUnit || 'PIECE',
       userId

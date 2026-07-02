@@ -55,13 +55,11 @@ export async function createCategory(
   data: CreateCategoryRequest
 ): Promise<Category> {
   // Check if category with this name already exists for this user
-  const existing = await prisma.category.findUnique({
+  const existing = await prisma.category.findFirst({
     where: {
-      userId_name_deletedAt: {
-        userId,
-        name: data.name,
-        deletedAt: null
-      }
+      userId,
+      name: data.name,
+      deletedAt: null
     }
   });
 
@@ -106,13 +104,11 @@ export async function updateCategory(
 
   // If updating name, check for duplicates
   if (data.name && data.name !== category.name) {
-    const existing = await prisma.category.findUnique({
+    const existing = await prisma.category.findFirst({
       where: {
-        userId_name_deletedAt: {
-          userId,
-          name: data.name,
-          deletedAt: null
-        }
+        userId,
+        name: data.name,
+        deletedAt: null
       }
     });
 
@@ -178,25 +174,27 @@ export async function createDefaultCategories(userId: string): Promise<Category[
     'טואלטיקה'
   ];
 
-  const categories = await Promise.all(
-    defaultCategoryNames.map(name =>
-      prisma.category.upsert({
-        where: {
-          userId_name_deletedAt: {
-            userId,
-            name,
-            deletedAt: null
-          }
-        },
-        update: {},
-        create: {
+  const categories = [];
+  for (const name of defaultCategoryNames) {
+    let category = await prisma.category.findFirst({
+      where: {
+        userId,
+        name,
+        deletedAt: null
+      }
+    });
+
+    if (!category) {
+      category = await prisma.category.create({
+        data: {
           name,
           userId,
           isDefault: true
         }
-      })
-    )
-  );
+      });
+    }
+    categories.push(category);
+  }
 
   return categories.map(cat => ({
     ...cat,
