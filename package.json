@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
+    "build:backend": "npm run build -w packages/shared && cd packages/backend && npx prisma generate && npm run build",
+    "start:backend": "cd packages/backend && npm start",
     "test": "npm run test --workspaces --if-present",
     "backend:dev": "npm run dev -w packages/backend",
     "frontend:dev": "npm run dev -w packages/frontend",
