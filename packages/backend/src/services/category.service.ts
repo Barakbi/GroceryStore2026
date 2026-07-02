@@ -57,9 +57,10 @@ export async function createCategory(
   // Check if category with this name already exists for this user
   const existing = await prisma.category.findUnique({
     where: {
-      userId_name: {
+      userId_name_deletedAt: {
         userId,
-        name: data.name
+        name: data.name,
+        deletedAt: null
       }
     }
   });
@@ -107,9 +108,10 @@ export async function updateCategory(
   if (data.name && data.name !== category.name) {
     const existing = await prisma.category.findUnique({
       where: {
-        userId_name: {
+        userId_name_deletedAt: {
           userId,
-          name: data.name
+          name: data.name,
+          deletedAt: null
         }
       }
     });
@@ -180,9 +182,10 @@ export async function createDefaultCategories(userId: string): Promise<Category[
     defaultCategoryNames.map(name =>
       prisma.category.upsert({
         where: {
-          userId_name: {
+          userId_name_deletedAt: {
             userId,
-            name
+            name,
+            deletedAt: null
           }
         },
         update: {},

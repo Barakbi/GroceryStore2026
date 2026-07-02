@@ -39,11 +39,11 @@ export interface AuthResponse {
 export interface Store {
   id: string;
   name: string;
-  address?: string;
-  city?: string;
+  address: string | null;
+  city: string | null;
   userId: string;
-  deletedAt?: Date | null;
-  deletedBy?: string | null;
+  deletedAt: Date | null;
+  deletedBy: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -66,8 +66,8 @@ export interface Category {
   name: string;
   userId: string;
   isDefault: boolean;
-  deletedAt?: Date | null;
-  deletedBy?: string | null;
+  deletedAt: Date | null;
+  deletedBy: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,13 +84,13 @@ export interface UpdateCategoryRequest {
 export interface Product {
   id: string;
   canonicalName: string;
-  categoryId?: string;
+  categoryId: string | null;
   category?: Category;
-  barcode?: string;
+  barcode: string | null;
   defaultUnit: UnitType;
   userId: string;
-  deletedAt?: Date | null;
-  deletedBy?: string | null;
+  deletedAt: Date | null;
+  deletedBy: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -99,7 +99,7 @@ export interface ProductAlias {
   id: string;
   productId: string;
   aliasName: string;
-  language?: string;
+  language: string | null;
   createdAt: Date;
 }
 
@@ -138,10 +138,10 @@ export interface Purchase {
   purchaseDate: Date;
   storeId: string;
   totalAmount: number;
-  notes?: string;
+  notes: string | null;
   userId: string;
-  deletedAt?: Date | null;
-  deletedBy?: string | null;
+  deletedAt: Date | null;
+  deletedBy: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
