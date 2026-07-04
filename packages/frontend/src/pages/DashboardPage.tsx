@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DashboardStats } from '@grocery-store/shared';
 import api from '../services/api';
 import { TEXT, formatCurrency, formatDate } from '../utils/text';

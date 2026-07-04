@@ -14,7 +14,6 @@ import type {
   UpdateProductRequest,
   ProductNormalizationRequest,
   ProductNormalizationResponse,
-  Purchase,
   PurchaseWithDetails,
   CreatePurchaseRequest,
   UpdatePurchaseRequest,

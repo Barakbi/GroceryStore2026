@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Product, Category, UnitType } from '@grocery-store/shared';
 import api from '../services/api';
 import { TEXT, getUnitName } from '../utils/text';
@@ -8,7 +8,12 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    canonicalName: string;
+    categoryId: string;
+    barcode: string;
+    defaultUnit: UnitType;
+  }>({
     canonicalName: '',
     categoryId: '',
     barcode: '',
