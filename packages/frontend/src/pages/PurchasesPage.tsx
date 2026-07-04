@@ -102,6 +102,9 @@ export default function PurchasesPage() {
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [addProductForItemIndex, setAddProductForItemIndex] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [productSearchTexts, setProductSearchTexts] = useState<Map<number, string>>(new Map());
+  const [barcodeInputs, setBarcodeInputs] = useState<Map<number, string>>(new Map());
+  const [showProductDropdowns, setShowProductDropdowns] = useState<Map<number, boolean>>(new Map());
 
   const [formData, setFormData] = useState({
     storeId: '',
@@ -158,6 +161,10 @@ export default function PurchasesPage() {
     });
     setEditingPurchaseId(null);
     setShowForm(false);
+    setProductSearchTexts(new Map());
+    setBarcodeInputs(new Map());
+    setShowProductDropdowns(new Map());
+    setCategoryFilter(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -229,6 +236,39 @@ export default function PurchasesPage() {
       ...formData,
       items: formData.items.filter((_, i) => i !== index)
     });
+
+    // Clean up search and barcode state for this item and shift indices
+    const newSearchTexts = new Map<number, string>();
+    const newBarcodeInputs = new Map<number, string>();
+    const newShowDropdowns = new Map<number, boolean>();
+
+    productSearchTexts.forEach((value, key) => {
+      if (key < index) {
+        newSearchTexts.set(key, value);
+      } else if (key > index) {
+        newSearchTexts.set(key - 1, value);
+      }
+    });
+
+    barcodeInputs.forEach((value, key) => {
+      if (key < index) {
+        newBarcodeInputs.set(key, value);
+      } else if (key > index) {
+        newBarcodeInputs.set(key - 1, value);
+      }
+    });
+
+    showProductDropdowns.forEach((value, key) => {
+      if (key < index) {
+        newShowDropdowns.set(key, value);
+      } else if (key > index) {
+        newShowDropdowns.set(key - 1, value);
+      }
+    });
+
+    setProductSearchTexts(newSearchTexts);
+    setBarcodeInputs(newBarcodeInputs);
+    setShowProductDropdowns(newShowDropdowns);
   };
 
   const calculateTotal = () => {
@@ -274,11 +314,68 @@ export default function PurchasesPage() {
     return purchaseChanges.get(itemId);
   };
 
-  const getFilteredProducts = () => {
-    if (!categoryFilter) {
-      return products;
+  const getFilteredProducts = (itemIndex: number, currentProductId?: string) => {
+    let filtered = [...products];
+
+    // If this row already has a product selected and it's not in the filtered category,
+    // keep showing the selected product in addition to filtered products
+    const selectedProduct = currentProductId
+      ? products.find(p => p.id === currentProductId)
+      : null;
+
+    // Apply category filter only if no product is selected yet (productId is empty)
+    if (categoryFilter && !currentProductId) {
+      filtered = filtered.filter(product => product.categoryId === categoryFilter);
     }
-    return products.filter(product => product.categoryId === categoryFilter);
+
+    // Apply search text filter
+    const searchText = productSearchTexts.get(itemIndex) || '';
+    if (searchText.trim()) {
+      const searchLower = searchText.toLowerCase();
+      filtered = filtered.filter(product =>
+        product.canonicalName.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // If we have a selected product that's not in the filtered list, add it
+    if (selectedProduct && !filtered.find(p => p.id === selectedProduct.id)) {
+      filtered = [selectedProduct, ...filtered];
+    }
+
+    return filtered;
+  };
+
+  const handleBarcodeSearch = async (itemIndex: number, barcode: string) => {
+    if (!barcode.trim()) return;
+
+    try {
+      // Search for product by barcode using the existing API
+      const searchResults = await api.getProducts({ search: barcode });
+
+      if (searchResults.length > 0) {
+        // Find exact barcode match first
+        const exactMatch = searchResults.find(p => p.barcode === barcode);
+        const productToSelect = exactMatch || searchResults[0];
+
+        // Confirm with user
+        if (window.confirm(`האם להשתמש במוצר "${productToSelect.canonicalName}"?`)) {
+          updateItem(itemIndex, 'productId', productToSelect.id);
+          // Clear barcode input and search text after selection
+          const newBarcodeInputs = new Map(barcodeInputs);
+          newBarcodeInputs.set(itemIndex, '');
+          setBarcodeInputs(newBarcodeInputs);
+
+          const newSearchTexts = new Map(productSearchTexts);
+          newSearchTexts.set(itemIndex, '');
+          setProductSearchTexts(newSearchTexts);
+        }
+      } else {
+        alert('לא נמצא מוצר עם ברקוד זה');
+      }
+    } catch (error) {
+      console.error('Failed to search barcode:', error);
+      alert('שגיאה בחיפוש ברקוד');
+    }
   };
 
   const renderPriceChangeIcon = (purchaseId: string, item: PurchaseWithDetails['items'][0]) => {
@@ -452,94 +549,239 @@ export default function PurchasesPage() {
                   </div>
                   {categoryFilter && (
                     <div style={{ marginBlockStart: '0.5rem', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-                      מציג {getFilteredProducts().length} מוצרים
+                      מציג {products.filter(p => p.categoryId === categoryFilter).length} מוצרים
                     </div>
                   )}
                 </div>
               )}
 
-              {formData.items.map((item, index) => (
+              {formData.items.map((item, index) => {
+                const selectedProduct = item.productId ? products.find(p => p.id === item.productId) : null;
+                const searchText = productSearchTexts.get(index) || '';
+                const displayValue = selectedProduct && !searchText ? selectedProduct.canonicalName : searchText;
+                const filteredProducts = getFilteredProducts(index, item.productId);
+                const showDropdown = showProductDropdowns.get(index) && filteredProducts.length > 0;
+
+                return (
                 <div key={index} style={{
-                  display: 'grid',
-                  gridTemplateColumns: '2fr 1fr 1fr 1fr auto',
-                  gap: '0.5rem',
-                  marginBlockEnd: '0.5rem',
-                  alignItems: 'end'
+                  marginBlockEnd: '1rem',
+                  padding: '0.75rem',
+                  backgroundColor: 'var(--color-background)',
+                  borderRadius: '8px'
                 }}>
-                  <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  {/* Product Selection with Autocomplete and Barcode */}
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBlockEnd: '0.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 300px', minWidth: '200px' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBlockEnd: '0.25rem' }}>
+                        מוצר
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.25rem', position: 'relative' }}>
+                        <div style={{ flex: 1, position: 'relative' }}>
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder={TEXT.purchases.selectProduct}
+                            value={displayValue}
+                            onChange={(e) => {
+                              const newSearchTexts = new Map(productSearchTexts);
+                              newSearchTexts.set(index, e.target.value);
+                              setProductSearchTexts(newSearchTexts);
+
+                              // Clear product selection when typing
+                              if (item.productId) {
+                                updateItem(index, 'productId', '');
+                              }
+
+                              // Show dropdown when typing
+                              const newShowDropdowns = new Map(showProductDropdowns);
+                              newShowDropdowns.set(index, true);
+                              setShowProductDropdowns(newShowDropdowns);
+                            }}
+                            onFocus={() => {
+                              const newShowDropdowns = new Map(showProductDropdowns);
+                              newShowDropdowns.set(index, true);
+                              setShowProductDropdowns(newShowDropdowns);
+                            }}
+                            onBlur={() => {
+                              // Delay hiding dropdown to allow click events
+                              setTimeout(() => {
+                                const newShowDropdowns = new Map(showProductDropdowns);
+                                newShowDropdowns.set(index, false);
+                                setShowProductDropdowns(newShowDropdowns);
+
+                                // If no product selected, clear search text
+                                if (!item.productId) {
+                                  const newSearchTexts = new Map(productSearchTexts);
+                                  newSearchTexts.set(index, '');
+                                  setProductSearchTexts(newSearchTexts);
+                                }
+                              }, 200);
+                            }}
+                            required={!item.productId}
+                            style={{ width: '100%' }}
+                          />
+                          {showDropdown && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: 0,
+                              right: 0,
+                              backgroundColor: 'white',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: '4px',
+                              marginBlockStart: '0.25rem',
+                              maxHeight: '200px',
+                              overflowY: 'auto',
+                              zIndex: 1000,
+                              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                            }}>
+                              {filteredProducts.map((product) => (
+                                <div
+                                  key={product.id}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault(); // Prevent blur event
+                                    updateItem(index, 'productId', product.id);
+                                    const newSearchTexts = new Map(productSearchTexts);
+                                    newSearchTexts.set(index, '');
+                                    setProductSearchTexts(newSearchTexts);
+                                    const newShowDropdowns = new Map(showProductDropdowns);
+                                    newShowDropdowns.set(index, false);
+                                    setShowProductDropdowns(newShowDropdowns);
+                                  }}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid var(--color-background)',
+                                    backgroundColor: item.productId === product.id ? 'var(--color-background)' : 'white'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'var(--color-background)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = item.productId === product.id ? 'var(--color-background)' : 'white';
+                                  }}
+                                >
+                                  {product.canonicalName}
+                                  {product.category && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginInlineStart: '0.5rem' }}>
+                                      ({product.category.name})
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => handleAddProduct(index)}
+                          title={TEXT.products.addProductQuick}
+                          style={{
+                            padding: '0.375rem 0.625rem',
+                            fontSize: '1rem',
+                            lineHeight: '1.5'
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ flex: '0 1 200px', minWidth: '150px' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBlockEnd: '0.25rem' }}>
+                        סריקת ברקוד
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="הזן ברקוד"
+                          value={barcodeInputs.get(index) || ''}
+                          onChange={(e) => {
+                            const newBarcodeInputs = new Map(barcodeInputs);
+                            newBarcodeInputs.set(index, e.target.value);
+                            setBarcodeInputs(newBarcodeInputs);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleBarcodeSearch(index, barcodeInputs.get(index) || '');
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => handleBarcodeSearch(index, barcodeInputs.get(index) || '')}
+                          title="חפש ברקוד"
+                          style={{
+                            padding: '0.375rem 0.625rem',
+                            fontSize: '0.875rem',
+                            lineHeight: '1.5',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          🔍
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quantity, Unit, Price, Delete */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr auto',
+                    gap: '0.5rem',
+                    alignItems: 'end'
+                  }}>
+
+                    <input
+                      type="number"
+                      className="form-input"
+                      placeholder={TEXT.purchases.quantity}
+                      value={item.quantity}
+                      onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value))}
+                      min="0.01"
+                      step="0.01"
+                      required
+                    />
+
                     <select
                       className="form-select"
-                      value={item.productId}
-                      onChange={(e) => updateItem(index, 'productId', e.target.value)}
+                      value={item.unitType}
+                      onChange={(e) => updateItem(index, 'unitType', e.target.value)}
                       required
-                      style={{ flex: 1 }}
                     >
-                      <option value="">{TEXT.purchases.selectProduct}</option>
-                      {getFilteredProducts().map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.canonicalName}
+                      {Object.values(UnitType).map((unit) => (
+                        <option key={unit} value={unit}>
+                          {getUnitName(unit)}
                         </option>
                       ))}
                     </select>
+
+                    <input
+                      type="number"
+                      className="form-input"
+                      placeholder={TEXT.purchases.price}
+                      value={item.totalPrice}
+                      onChange={(e) => updateItem(index, 'totalPrice', parseFloat(e.target.value))}
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+
                     <button
                       type="button"
-                      className="btn btn-secondary"
-                      onClick={() => handleAddProduct(index)}
-                      title={TEXT.products.addProductQuick}
-                      style={{
-                        padding: '0.375rem 0.625rem',
-                        fontSize: '1rem',
-                        lineHeight: '1.5'
-                      }}
+                      className="btn btn-danger"
+                      onClick={() => removeItem(index)}
                     >
-                      +
+                      ✕
                     </button>
                   </div>
-
-                  <input
-                    type="number"
-                    className="form-input"
-                    placeholder={TEXT.purchases.quantity}
-                    value={item.quantity}
-                    onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value))}
-                    min="0.01"
-                    step="0.01"
-                    required
-                  />
-
-                  <select
-                    className="form-select"
-                    value={item.unitType}
-                    onChange={(e) => updateItem(index, 'unitType', e.target.value)}
-                    required
-                  >
-                    {Object.values(UnitType).map((unit) => (
-                      <option key={unit} value={unit}>
-                        {getUnitName(unit)}
-                      </option>
-                    ))}
-                  </select>
-
-                  <input
-                    type="number"
-                    className="form-input"
-                    placeholder={TEXT.purchases.price}
-                    value={item.totalPrice}
-                    onChange={(e) => updateItem(index, 'totalPrice', parseFloat(e.target.value))}
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={() => removeItem(index)}
-                  >
-                    ✕
-                  </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {formData.items.length > 0 && (

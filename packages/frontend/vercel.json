@@ -1,6 +1,5 @@
 {
-  "buildCommand": "cd ../.. && npm run build -w packages/shared && npm run build -w packages/frontend",
-  "outputDirectory": "dist",
-  "installCommand": "cd ../.. && npm install",
-  "framework": "vite"
+  "buildCommand": "cd ../.. && npm run build:frontend",
+  "installCommand": "cd ../.. && npm ci",
+  "outputDirectory": "dist"
 }

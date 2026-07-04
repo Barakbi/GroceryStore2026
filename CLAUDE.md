@@ -185,12 +185,27 @@ All routes except `/login` and `/register` use `ProtectedRoute` wrapper that che
   - Removing items from purchase
   - Editing item quantities, unit types, products, and prices
   - Auto-recalculation of total amount and unit prices
+- **Autocomplete Product Selection**: Single-field product search with real-time filtering
+  - Type to search: As user types (e.g., "חל"), dropdown automatically shows matching products
+  - Contains-based filtering: Shows all products containing the typed string (e.g., "חל" shows "חלב טרה 3%", "חלב תנובה בקרטון")
+  - Single unified field: No separate search input and dropdown - one field handles both typing and selection
+  - Smart dropdown: Auto-appears on focus or typing, shows product name + category
+  - Click to select: Click any product from dropdown to select it
+  - Auto-clear: Search text clears after product selection
 - **Category Filter**: Filter products by category when adding purchase items
   - Category chips displayed above items section (e.g., "הכל", "חלב ומוצריו")
-  - Click category to filter product dropdown to that category only
+  - Smart filtering: Only affects rows without a selected product (empty "בחר מוצר" rows)
+  - Preserves selections: Already-selected products remain unchanged when category filter changes
   - Shows product count for selected category
-  - Filter persists across multiple item additions
+  - Works with autocomplete: Category filter + typed search both apply simultaneously
   - Optional - users can still browse all products by selecting "הכל"
+- **Barcode Scanner**: Each product row includes barcode input for quick product selection
+  - Type or scan barcode into dedicated barcode field
+  - Press Enter or click search button (🔍) to search
+  - Confirmation dialog: If barcode found, shows "האם להשתמש במוצר '[product name]'?" for user confirmation
+  - Auto-select: On confirmation, product is auto-selected and barcode input clears
+  - Fallback alert: If no product found, shows "לא נמצא מוצר עם ברקוד זה"
+  - Backend search: Uses existing `GET /products?search=barcode` API endpoint
 - **Price Change Indicators**: Visual ▲/▼ arrows on purchase items when price changes >1% vs previous purchase at same store
   - Click arrow to open `PriceChangeModal` showing side-by-side price comparison
   - Color-coded: red for increases, green for decreases
@@ -268,13 +283,28 @@ When modifying purchase-related code:
   - `editingPurchaseId` state tracks which purchase is being edited
   - Form heading changes from "Create Purchase" to "Edit Purchase"
   - Items array is fully mutable (add/remove/modify)
-  - **Category Filter**: Optional filter to narrow product dropdown by category
+  - **Autocomplete Product Field**: Single input field with real-time search and dropdown
+    - `productSearchTexts` Map tracks search text per item index
+    - `showProductDropdowns` Map controls dropdown visibility per item
+    - `getFilteredProducts(itemIndex, currentProductId)` filters products by:
+      - Category filter (only if product not yet selected)
+      - Search text (contains-based matching)
+      - Preserves already-selected product in list even if filtered out
+    - Dropdown appears on focus or typing, hides on blur with delay for click handling
+    - Uses `onMouseDown` on dropdown items to prevent blur before selection
+  - **Barcode Scanner**: Per-item barcode input for quick product lookup
+    - `barcodeInputs` Map tracks barcode input per item index
+    - `handleBarcodeSearch(itemIndex, barcode)` searches via `api.getProducts({ search: barcode })`
+    - Shows confirmation dialog before auto-selecting product
+    - Clears both barcode input and search text on successful selection
+  - **Category Filter**: Optional filter to narrow autocomplete suggestions by category
     - `categoryFilter` state tracks selected category (null = show all)
-    - `getFilteredProducts()` returns products filtered by selected category
+    - Only applies filter to rows without selected product (empty "בחר מוצר" rows)
+    - Already-selected products remain unchanged when category changes
     - UI shows category chips above items section (e.g., "הכל", "חלב ומוצריו", "ירקות")
     - Selected category highlighted with primary color
     - Displays product count when category is selected
-    - Filter persists while adding multiple items from same category
+    - Works in combination with autocomplete search text filtering
 
 ## Price Intelligence Algorithms
 
