@@ -1,20 +1,19 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "npm"]
+nixPkgs = ["nodejs_20"]
 
 [phases.install]
 cmds = [
   "cd ../..",
-  "npm install",
-  "npm run build -w packages/shared",
-  "cd packages/backend",
-  "npx prisma generate"
+  "npm ci",
+  "npm run build -w packages/shared"
 ]
 
 [phases.build]
 cmds = [
-  "cd ../..",
-  "npm run build:backend"
+  "cd packages/backend",
+  "npx prisma generate",
+  "npm run build"
 ]
 
 [start]
-cmd = "cd ../.. && npm run start:backend"
+cmd = "node packages/backend/dist/index.js"
