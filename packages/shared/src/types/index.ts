@@ -1,14 +1,17 @@
 // Shared TypeScript types for Grocery Store 2026
 
-// Enums - Keep this in sync with Prisma schema
-export enum UnitType {
-  PIECE = 'PIECE',
-  KILOGRAM = 'KILOGRAM',
-  GRAM = 'GRAM',
-  LITER = 'LITER',
-  MILLILITER = 'MILLILITER',
-  PACKAGE = 'PACKAGE'
-}
+// Unit type - compatible with Prisma's generated enum
+// Export as const object for runtime use and as type for type checking
+export const UnitType = {
+  PIECE: 'PIECE',
+  KILOGRAM: 'KILOGRAM',
+  GRAM: 'GRAM',
+  LITER: 'LITER',
+  MILLILITER: 'MILLILITER',
+  PACKAGE: 'PACKAGE'
+} as const;
+
+export type UnitType = typeof UnitType[keyof typeof UnitType];
 
 // User types
 export interface User {

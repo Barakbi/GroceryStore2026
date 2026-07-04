@@ -68,8 +68,8 @@ export function convertUnit(
   }
 
   // Check if both units are in the same category
-  const weightUnits = [UnitType.GRAM, UnitType.KILOGRAM];
-  const volumeUnits = [UnitType.MILLILITER, UnitType.LITER];
+  const weightUnits: UnitType[] = [UnitType.GRAM, UnitType.KILOGRAM];
+  const volumeUnits: UnitType[] = [UnitType.MILLILITER, UnitType.LITER];
 
   const isWeightConversion = weightUnits.includes(fromUnit) && weightUnits.includes(toUnit);
   const isVolumeConversion = volumeUnits.includes(fromUnit) && volumeUnits.includes(toUnit);
