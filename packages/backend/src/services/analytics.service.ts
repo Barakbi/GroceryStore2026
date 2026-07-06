@@ -120,12 +120,17 @@ function calculateMonthlySpending(purchases: any[]): MonthlySpending[] {
 
 /**
  * Get top products by total spending
+ * Only returns products purchased from at least 2 different stores (for price comparison)
  */
 async function getTopProductsBySpending(userId: string, limit: number): Promise<ProductSpending[]> {
   const products = await prisma.product.findMany({
     where: { userId },
     include: {
-      purchaseItems: true
+      purchaseItems: {
+        include: {
+          purchase: true
+        }
+      }
     }
   });
 
@@ -135,14 +140,19 @@ async function getTopProductsBySpending(userId: string, limit: number): Promise<
       const quantity = product.purchaseItems.reduce((sum, item) => sum + item.quantity, 0);
       const purchaseCount = product.purchaseItems.length;
 
+      // Count unique stores for this product
+      const uniqueStores = new Set(product.purchaseItems.map(item => item.purchase.storeId));
+      const storeCount = uniqueStores.size;
+
       return {
         product,
         totalSpent,
         quantity,
-        purchaseCount
+        purchaseCount,
+        storeCount
       };
     })
-    .filter(item => item.purchaseCount > 0)
+    .filter(item => item.purchaseCount > 0 && item.storeCount >= 2) // Only include products from 2+ stores
     .sort((a, b) => b.totalSpent - a.totalSpent)
     .slice(0, limit);
 

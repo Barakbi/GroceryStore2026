@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { ProductSpending, StorePrice } from '@grocery-store/shared';
 import api from '../services/api';
-import { TEXT, formatCurrency } from '../utils/text';
+import { TEXT, formatCurrency, formatDate } from '../utils/text';
 
 interface PriceComparisonChartProps {
   products: ProductSpending[];
@@ -93,39 +93,84 @@ export default function PriceComparisonChart({ products }: PriceComparisonChartP
     }
 
     return (
-      <ResponsiveContainer width="100%" height={Math.max(200, storePrices.length * 50)}>
-        <BarChart
-          data={chartData}
-          layout="vertical"
-          margin={{ top: 10, right: 30, left: 80, bottom: 10 }}
-        >
-          <XAxis
-            type="number"
-            tickFormatter={(value) => formatCurrency(value)}
-          />
-          <YAxis
-            type="category"
-            dataKey="name"
-            width={70}
-          />
-          <Tooltip
-            formatter={(value: number) => [formatCurrency(value), TEXT.analytics.avgPrice]}
-            contentStyle={{
-              backgroundColor: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px'
-            }}
-          />
-          <Bar dataKey="price" radius={[0, 4, 4, 0]}>
-            {chartData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={entry.isCheapest ? 'var(--color-secondary)' : 'var(--color-primary)'}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      <>
+        {/* Bar Chart */}
+        <ResponsiveContainer width="100%" height={Math.max(200, storePrices.length * 50)}>
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
+          >
+            <XAxis
+              type="number"
+              tickFormatter={(value) => formatCurrency(value)}
+            />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={150}
+            />
+            <Tooltip
+              formatter={(value: number) => [formatCurrency(value), TEXT.analytics.avgPrice]}
+              contentStyle={{
+                backgroundColor: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px'
+              }}
+            />
+            <Bar dataKey="price" radius={[0, 4, 4, 0]}>
+              {chartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.isCheapest ? 'var(--color-secondary)' : 'var(--color-primary)'}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+
+        {/* Detailed Table */}
+        <div style={{ marginBlockStart: '2rem' }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>{TEXT.stores.storeName}</th>
+                <th>{TEXT.analytics.avgPrice}</th>
+                <th>{TEXT.analytics.lastPrice}</th>
+                <th>{TEXT.analytics.lastPurchase}</th>
+                <th>{TEXT.analytics.purchaseCount}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {storePrices.map((sp) => (
+                <tr key={sp.store.id}>
+                  <td style={{ fontWeight: sp.avgUnitPrice === minPrice ? 'bold' : 'normal' }}>
+                    {sp.store.name}
+                    {sp.avgUnitPrice === minPrice && (
+                      <span style={{
+                        color: 'var(--color-secondary)',
+                        marginInlineStart: '0.5rem',
+                        fontSize: '0.875rem'
+                      }}>
+                        {TEXT.analytics.cheapestStore}
+                      </span>
+                    )}
+                  </td>
+                  <td style={{
+                    fontWeight: sp.avgUnitPrice === minPrice ? 'bold' : 'normal',
+                    color: sp.avgUnitPrice === minPrice ? 'var(--color-secondary)' : 'inherit'
+                  }}>
+                    {formatCurrency(sp.avgUnitPrice)}
+                  </td>
+                  <td>{formatCurrency(sp.lastPrice)}</td>
+                  <td>{formatDate(sp.lastPurchaseDate)}</td>
+                  <td>{sp.purchaseCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
     );
   };
 
